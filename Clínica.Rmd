@@ -1,0 +1,94 @@
+---
+title: "Clínica"
+author: "Grupo Naranja"
+date: "2025-10-30"
+output: html_document
+---
+
+```{r}
+
+library(tidyverse)
+library(tidyverse)
+library(sf)
+library(ggmap)
+library(osmdata)
+library(dplyr)
+library(leaflet)
+library(leaflet.extras)
+library(stringr)
+
+```
+
+
+```{r}
+
+censo_2010 <- read.csv("data/Censo2010_Pob_Viv_Hog.csv",
+                       stringsAsFactor = TRUE,
+                       encoding = "UTF-8") %>% 
+  mutate(Código = str_pad(Código, width = 5, pad = "0")) %>% 
+  mutate(Codigo_prov = str_sub(`Código`, 1, 2))
+  
+```
+
+```{r}
+
+codigo_provincia <- read.csv("data/Censo2010_CodigoProv.csv",
+                             stringsAsFactor = TRUE,
+                             encoding = "UTF-8") %>%
+  mutate(Código = str_pad(Código, width = 2, pad = "0")) %>%
+  rename(Codigo_prov=Código)
+```
+
+```{r}
+
+censo_2010 <- left_join(censo_2010, codigo_provincia, by = "Codigo_prov")
+
+```
+
+
+```{r}
+
+censo_2010 <- censo_2010 %>%
+  group_by(Provincia, Codigo_prov) %>% 
+  summarise(
+    Poblacion2010 = sum(Poblacion2010, na.rm = TRUE),
+    Viviendas2010 = sum(Viviendas2010, na.rm = TRUE),
+    Hogares2010 = sum(Hogares2010, na.rm = TRUE)
+  )
+```
+```{r}
+
+sum(censo_2010$Poblacion2010)
+
+```
+
+```{r}
+
+provincias_arg <- st_read("data/radios_censo_2022_recorte.shp", quiet = TRUE,
+                        stringsAsFactors = TRUE,
+                        options = "ENCODING=UTF-8") %>% 
+  group_by(provincia, PROV) %>%
+  summarise(
+    radios = n(),
+    geometry = st_union(geometry)
+  ) %>% 
+  rename(Codigo_prov=PROV)
+
+```
+
+```{r}
+
+ggplot(provincias_arg)+
+  geom_sf(aes(fill=provincia), color="white")
+
+
+```
+
+
+
+```{r}
+
+censo_2010_geo <- left_join(censo_2010, provincias_arg, by="Codigo_prov")
+
+```
+
